@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen-TTS 语音合成工具</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #34495e; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        textarea { height: 150px; resize: vertical; }
+        .button-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.2s; }
+        #generateBtn { background-color: #3498db; color: white; flex: 2; }
+        #saveBtn { background-color: #2ecc71; color: white; flex: 1; }
+        #generateBtn:hover { background-color: #2980b9; }
+        #saveBtn:hover { background-color: #27ae60; }
+        .audio-player { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 6px; }
+        .status-message { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; }
+        .success { background-color: #d5f5e3; color: #27ae60; }
+        .error { background-color: #fadbd8; color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Qwen-TTS 语音合成</h1>
+        
+        <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="password" id="apiKey" placeholder="请输入阿里云API Key">
+        </div>
+
+        <div class="form-group">
+            <label for="textInput">合成文本</label>
+            <textarea id="textInput" placeholder="请输入需要合成语音的文本..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="voiceSelect">选择音色</label>
+            <select id="voiceSelect">
+                <option value="Chelsie">Chelsie (女)</option>
+                <option value="Cherry">Cherry (女)</option>
+                <option value="Ethan">Ethan (男)</option>
+                <option value="Serena">Serena (女)</option>
+                <option value="Dylan">Dylan (北京话-男)</option>
+                <option value="Jada">Jada (吴语-女)</option>
+                <option value="Sunny">Sunny (四川话-女)</option>
+            </select>
+        </div>
+
+        <div class="button-group">
+            <button id="generateBtn">生成语音</button>
+            <button id="saveBtn" disabled>保存音频</button>
+        </div>
+
+        <div class="audio-player">
+            <audio id="audioPlayer" controls>您的浏览器不支持音频播放</audio>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiKeyInput = document.getElementById('apiKey');
+            const textInput = document.getElementById('textInput');
+            const voiceSelect = document.getElementById('voiceSelect');
+            const generateBtn = document.getElementById('generateBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const statusMessage = document.getElementById('statusMessage');
+            let tempAudioPath = null;
+
+            // 加载保存的API Key
+            if (localStorage.getItem('qwenTtsApiKey')) {
+                apiKeyInput.value = localStorage.getItem('qwenTtsApiKey');
+            }
+
+            generateBtn.addEventListener('click', async () => {
+                const apiKey = apiKeyInput.value.trim();
+                const text = textInput.value.trim();
+                const voice = voiceSelect.value;
+
+                if (!apiKey || !text) {
+                    showMessage('API Key和文本不能为空', 'error');
+                    return;
+                }
+
+                // 保存API Key到本地存储
+                localStorage.setItem('qwenTtsApiKey', apiKey);
+
+                try {
+                    generateBtn.disabled = true;
+                    generateBtn.textContent = '生成中...';
+                    showMessage('正在生成语音，请稍候...', 'success');
+                    
+                    console.log('选择的音色:', voice); // 添加日志，便于调试
+                    
+                    tempAudioPath = await window.api.generateTTS({
+                        apiKey,
+                        text,
+                        voice: voice // 确保正确传递voice参数
+                    });
+
+                    audioPlayer.src = `file://${tempAudioPath}`;
+                    saveBtn.disabled = false;
+                    showMessage('语音生成成功！', 'success');
+                } catch (error) {
+                    console.error('生成失败:', error);
+                    showMessage(`生成失败: ${error.message || '未知错误'}`, 'error');
+                } finally {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = '生成语音';
+                }
+            });
+
+            saveBtn.addEventListener('click', async () => {
+                if (!tempAudioPath) return;
+
+                try {
+                    const fileName = `qwen-tts-${new Date().getTime()}.wav`;
+                    const savedPath = await window.api.saveAudio({
+                        tempPath: tempAudioPath,
+                        fileName: fileName
+                    });
+
+                    if (savedPath) {
+                        showMessage(`音频已保存至: ${savedPath}`, 'success');
+                    }
+                } catch (error) {
+                    showMessage(`保存失败: ${error.message || '未知错误'}`, 'error');
+                }
+            });
+
+            function showMessage(text, type) {
+                statusMessage.textContent = text;
+                statusMessage.className = `status-message ${type}`;
+                statusMessage.style.display = 'block';
+
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>

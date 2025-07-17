@@ -1,0 +1,32 @@
+{
+  "name": "qwentts",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder",
+    "package:win": "electron-builder --win",
+    "package:mac": "electron-builder --mac",
+    "package:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.example.qwentts",
+    "productName": "Qwen-TTS",
+    "target": [
+      "nsis",
+      "dmg",
+      "deb",
+      "rpm"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "axios": "^1.10.0",
+    "dotenv": "^17.2.0",
+    "electron": "^37.2.2",
+    "electron-builder": "^26.0.12"
+  }
+}
